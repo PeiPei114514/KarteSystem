@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>描画ビューア</title>
+</head>
+<body>
+	<h1>使われていない</h1>
+  <p id="status">データを受信中...</p>
+  <canvas id="canvas" style="border: 1px solid #000; display: block;"></canvas>
+  <br>
+  <button id="undoBtn">一つ戻る</button>
+  <button id="sendBtn">送信</button>
+
+<script th:inline="javascript">
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let drawing = false;    //今書いてるか（左クリックされてるか）
+    let strokes = [];       // 確定済みストローク全て（受信データ＋追記した線）
+    let currentStroke = []; // 現在描画中のストローク（今書いてる線）
+    let patientId = '';     // 受信データに含まれるpatientIdを保持しておく
+
+	//全部消して再描画（拡張ループさせて）
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const stroke of strokes) {
+        drawStroke(stroke);
+      }
+    }
+
+	//一本の線を書く
+    function drawStroke(points) {
+      if (points.length === 0) return;
+      ctx.beginPath(); //開始
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.moveTo(points[0].x, points[0].y); //最初の点に移動
+      for (let i = 1; i < points.length; i++) {//残りの線をつなげる
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.stroke(); //描画実行
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+//		const drawingData = [[${drawingData}]];
+//      const raw = sessionStorage.getItem('drawingData');
+	  const raw = [[${drawingData}]];//json文字列を取得
+      const status = document.getElementById('status');
+
+      if (!raw) {
+        status.textContent = 'データが見つかりません。お絵かき画面から送信してください。';
+        return;
+      }
+
+      let data;
+      try {
+        data = JSON.parse(raw); //文字列をjavascriptオブジェクトに変換
+      } catch (e) {
+        status.textContent = 'JSONの解析に失敗しました。';
+        return;
+      }
+
+      canvas.width  = data.width  || 400;//widthが無いなら400を入れる
+	  canvas.height = data.height || 400;
+      patientId = data.patientId || '';
+
+      strokes = data.strokes || []; //受信済みのストロークを保持（この後に追記していく）
+      redraw();
+
+      status.textContent = `再描画完了（ストローク数: ${strokes.length}）`;
+    });
+
+	//マウスを押した瞬間にしか動かない、描画開始位置を取得する関数(e)はマウス
+    canvas.addEventListener('mousedown', (e) => {
+      drawing = true;//描画中
+      currentStroke = [];
+      const rect = canvas.getBoundingClientRect();
+	  //点のキャンバス内の座標取得する。マウスX = 200　-　Canvas左端 = 100なら=100がキャンバス内座標
+      const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      currentStroke.push(pt); //点を保存
+      ctx.beginPath();
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.moveTo(pt.x, pt.y);
+    });
+//マウスが動き続ける限り動く関数
+    canvas.addEventListener('mousemove', (e) => {
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      currentStroke.push(pt);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();//ここでリアルタイムで線が見える
+    });
+//マウスを離した時の関数
+    function endDraw() {
+      if (!drawing) return;
+      drawing = false;
+      if (currentStroke.length > 0) {
+        strokes.push(currentStroke);//現在の線を合計線にpush
+        currentStroke = [];
+      }
+    }
+
+    canvas.addEventListener('mouseup', endDraw);//マウスを離すと終了
+    canvas.addEventListener('mouseleave', endDraw);//キャンバスの外に出たら終了
+//一つ戻すボタンがクリックされたら
+    document.getElementById('undoBtn').addEventListener('click', () => {
+      if (strokes.length === 0) return;
+      strokes.pop();//現在の線を削除
+      redraw();
+    });
+//送信ボタンを押したら
+document.getElementById('sendBtn').addEventListener('click', () => {
+  const data = {
+	patientId: patientId,
+    width: canvas.width,
+    height: canvas.height,
+    strokes: strokes
+  };
+  fetch('/saveDrawing', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.text())
+  .then(result => {
+    console.log(result);
+  });
+
+});
+  </script>
+</body>
+</html>
+
+
+<!--昔のコード-->
+
+<!--<!DOCTYPE html>-->
+<!--<html lang="ja">-->
+<!--<head>-->
+<!--  <meta charset="UTF-8">-->
+<!--  <title>描画ビューア</title>-->
+<!--</head>-->
+<!--<body>-->
+<!--  <p id="status">データを受信中...</p>-->
+<!--  <canvas id="canvas" style="border: 1px solid #000; display: block;"></canvas>-->
+  
+<!--<script th:inline="javascript">-->
+
+<!--    window.addEventListener('DOMContentLoaded', () => {-->
+<!--//		const drawingData = [[${drawingData}]];-->
+<!--//      const raw = sessionStorage.getItem('drawingData');-->
+<!--	  const raw = [[${drawingData}]];//json文字列を取得-->
+<!--      const status = document.getElementById('status');-->
+
+<!--      if (!raw) {-->
+<!--        status.textContent = 'データが見つかりません。お絵かき画面から送信してください。';-->
+<!--        return;-->
+<!--      }-->
+
+<!--      let data;-->
+<!--      try {-->
+<!--        data = JSON.parse(raw); //文字列をjavascriptオブジェクトに変換-->
+<!--      } catch (e) {-->
+<!--        status.textContent = 'JSONの解析に失敗しました。';-->
+<!--        return;-->
+<!--      }-->
+
+<!--      const canvas = document.getElementById('canvas');-->
+<!--      canvas.width  = data.width  || 400;//widthが無いなら400を入れる-->
+<!--	  canvas.height = data.height || 400;-->
+<!--      const ctx = canvas.getContext('2d');-->
+
+<!--      ctx.strokeStyle = '#000000';-->
+<!--      ctx.lineWidth = 2;-->
+<!--      ctx.lineCap = 'round';-->
+<!--      ctx.lineJoin = 'round';-->
+
+<!--      for (const stroke of (data.strokes || [])) {-->
+<!--        if (stroke.length === 0) continue;-->
+<!--        ctx.beginPath();-->
+<!--        ctx.moveTo(stroke[0].x, stroke[0].y);//始点へ移動-->
+<!--        for (let i = 1; i < stroke.length; i++) {//2個め以降の点を処理する-->
+<!--          ctx.lineTo(stroke[i].x, stroke[i].y);//線を作る-->
+<!--        }-->
+<!--        ctx.stroke();//ここで初めて線が表示される-->
+<!--      }-->
+
+<!--      status.textContent = `再描画完了（ストローク数: ${data.strokes.length}）`;-->
+<!--    });-->
+<!--  </script>-->
+<!--</body>-->
+<!--</html>-->

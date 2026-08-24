@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<link rel="stylesheet"
+         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+	
+
+	
+	<div th:replace="~{fragments/all_detail :: imageDetail(
+	    record=${karte},
+	    deleteUrl='/delete_karte',
+	    updateUrl='/update_upload',
+	    uploadUrl='/update_upload_karte',
+	    title='カルテ詳細'
+	)}"></div>
+
+<!--	<img th:src="@{/images/{img}(img=${karte.imgFilePath})}" -->
+<!--		width="1000" height="500" alt="カルテの画像">-->
+<!--		<form action="/delete_karte" method="get">-->
+<!--	<input type="submit" value="このカルテを消す">-->
+<!--	<input type="hidden" name="id" th:value="${karte.id}">-->
+<!--     </form>-->
+<!--	 <br>-->
+<!--	 <form>-->
+<!--		<input type="hidden" name="id" th:value="${karte.id}">-->
+<!--		<input type="submit" value="カルテを更新する">-->
+<!--	 </form>-->
+	 
+<!--	 	<form action="/update_upload" method="post" enctype="multipart/form-data">-->
+<!--	 		<input type="file" name="img_file" accept="image/*" required>-->
+<!--	 		<input type="hidden" name="id" th:value="${karte.id}">-->
+<!--	 		<button type="submit">アップロード</button>	-->
+<!--	 		<input type="submit" value="アップロード">-->
+<!--	 	</form>-->
+<script>
+	function downloadImage() {
+
+			    const img = document.getElementById("detailImage");
+
+			    const link = document.createElement("a");
+			    link.href = img.src;
+
+			    const fileName = img.src.split("/").pop();
+			    link.download = fileName;
+
+			    document.body.appendChild(link);
+			    link.click();
+			    document.body.removeChild(link);
+			}
+
+</script>
+</body>
+</html>

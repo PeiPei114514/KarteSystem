@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<link rel="stylesheet"
+         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	
+	<header class="app-header">
+
+	
+
+	    <div class="header-center">
+	        <div class="header-main">
+	            カルテ管理
+	        </div>
+	    </div>
+		<div id="header"></div>
+			<script src="/common/header-menu.js"></script>
+
+	</header>
+	
+	
+
+<!--	<div class="menu-buttons">-->
+		
+<!--	<form action="/detail" method="get">-->
+<!--	<button type="submit">検索</button>-->
+<!--	</form>-->
+<form action="/detail" method="get">
+    <button type="submit" class="top-MenuButton">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span>検索</span>
+    </button>
+</form>
+	
+
+<!--<form th:action="@{/insert_form}" method="get">-->
+<!--    <button type="submit" class="menuButton">-->
+<!--        <i class="fa-solid fa-plus"></i>-->
+<!--        <span>新規追加</span>-->
+<!--    </button>-->
+<!--</form>-->
+
+<button type="button"
+        class="top-MenuButton"
+        onclick="openDialog()">
+
+    <i class="fa-solid fa-plus"></i>
+    <span>新規追加</span>
+
+</button>
+<!-- uploadForm は不要になるので削除、inputだけ残す -->
+<input
+    type="file"
+    id="file"
+    name="img_file"
+    accept="image/*"
+    hidden>
+<!--</div>-->
+
+	<div class="patient-h3">
+	<h3>最近の患者(最新20件)</h3>
+	</div>
+	<div class="patient-list">
+
+	    <a th:each="patient : ${patientList}"
+	       th:href="@{/detail/{id}(id=${patient.id},from='top')}"
+		   th:class="${patient.sex == 'M'}
+		                  ? 'patient-card male'
+		                  : 'patient-card female'">
+	        <div class="name" th:text="${patient.namae}"></div>
+			<div th:if="${patient.age!=null}"
+						 class="age" th:text="'(' + ${patient.age} + ')'"></div>
+						<div th:if="${patient.sex!=null}"
+						class="gender"
+						     th:text="${patient.sex == 'M'} ? '男' : '女'"></div>
+
+				 <div class="updated"
+				            th:text="${#temporals.format(patient.updateDate,'yyyy/MM/dd')} + ' 更新'"></div>
+	    
+	    </a>
+	</div>
+<!--	<table border="1">-->
+<!--		<tr>-->
+<!--			<th>ID</th>-->
+<!--			<th>名前</th>-->
+<!--			<th>生年月日</th>-->
+<!--			<th>年齢</th>-->
+<!--			<th>性別</th>-->
+			
+<!--		</tr>-->
+<!--		<tr th:each="patient:${patientList}" th:object="${patient}">-->
+<!--			<td th:text="*{id}"></td>-->
+<!--			<td th:text="*{namae}"></td>-->
+<!--			<td th:text="*{birth}"></td>-->
+<!--			<td th:text="*{age}"></td>-->
+<!--			<div th:switch="*{sex}">-->
+<!--				<td th:case="M" th:text="男"></td>-->
+<!--				<td th:case="F" th:text="女"></td>-->
+<!--			</div>-->
+				
+<!--		</tr>-->
+<!--	</table>-->
+<!--	<a href="/select_form">検索</a><br>-->
+
+<div class="patient-link">
+<a th:href="@{/detail}">もっと見る
+	<i class="fa-solid fa-chevron-right"></i>
+</a>
+</div>
+<!--		<form action="/insert_form_quest_ver" method="post" enctype="multipart/form-data">-->
+<!--			enctypeがないとファイルの名前しか送られない-->
+<!--			<input type="file" name="img_file" accept="image/*" required>-->
+<!--			<input type="submit" value="アップロード">-->
+<!--		</form>-->
+
+
+<div id="dialog" class="dialog"  onclick="closeDialog()">
+
+    <div class="dialogContent" onclick="event.stopPropagation()">
+		
+
+		    <button class="closeButton" onclick="closeDialog()">
+		        <i class="fa-solid fa-xmark"></i>
+		    </button>
+
+        <h2>新規追加</h2>
+
+        <button   class="menuButton" onclick="document.getElementById('file').click()">
+			
+			<i class="fa-solid fa-camera"></i>
+            問診票から作成
+        </button>
+
+		<!-- 「問診票なしで作成」も新規の入力を始めるので、念のためクリアしてから遷移 -->
+		<button class="menuButton" onclick="sessionStorage.removeItem('questImageData'); sessionStorage.removeItem('questImageName'); sessionStorage.removeItem('questImageType'); location.href='/insert_form'">
+		   <i class="fa-solid fa-pen"></i>問診票なしで作成
+		</button>
+
+<!--        <button onclick="closeDialog()">-->
+<!--            キャンセル-->
+<!--        </button>-->
+
+    </div>
+
+</div>
+
+
+  
+  <script>
+  function openDialog() {
+      document.getElementById("dialog").style.display = "flex";
+  }
+
+  function closeDialog() {
+      document.getElementById("dialog").style.display = "none";
+  }
+
+
+  
+  const fileInput = document.getElementById("file");
+
+  // 画像を指定の最大辺に収まるようリサイズし、JPEGで圧縮してdataURLを返す
+  function compressImage(file, maxSize = 1600, quality = 0.8) {
+      return new Promise((resolve, reject) => {
+          const img = new Image();
+          const reader = new FileReader();
+
+          reader.onload = (e) => {
+              img.onload = () => {
+                  let { width, height } = img;
+
+                  // 長辺がmaxSizeを超えている場合のみ縮小
+                  if (width > maxSize || height > maxSize) {
+                      if (width > height) {
+                          height = Math.round(height * (maxSize / width));
+                          width = maxSize;
+                      } else {
+                          width = Math.round(width * (maxSize / height));
+                          height = maxSize;
+                      }
+                  }
+
+                  const canvas = document.createElement("canvas");
+                  canvas.width = width;
+                  canvas.height = height;
+
+                  const ctx = canvas.getContext("2d");
+                  ctx.drawImage(img, 0, 0, width, height);
+
+                  // JPEGとして圧縮（元がPNGでも問題形式(問診票の写真)ならJPEGで十分）
+                  const dataUrl = canvas.toDataURL("image/jpeg", quality);
+                  resolve(dataUrl);
+              };
+              img.onerror = reject;
+              img.src = e.target.result;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+      });
+  }
+
+  if (fileInput) {
+      fileInput.addEventListener("change", async function () {
+          if (this.files.length > 0) {
+              const file = this.files[0];
+
+              try {
+                  const compressedDataUrl = await compressImage(file, 1600, 0.8);
+
+                  sessionStorage.setItem("questImageData", compressedDataUrl);
+                  sessionStorage.setItem("questImageName", file.name.replace(/\.[^.]+$/, "") + ".jpg");
+                  sessionStorage.setItem("questImageType", "image/jpeg");
+
+                  location.href = "/insert_form";
+              } catch (err) {
+                  console.error("画像の圧縮に失敗しました", err);
+                  alert("画像の読み込みに失敗しました。別の画像を選んでください。");
+              }
+          }
+      });
+  }
+  
+  </script>
+
+
+
+</body>
+</html>

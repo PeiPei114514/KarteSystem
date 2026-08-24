@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>お絵かき</title>
+  <link rel="stylesheet"
+           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+	
+	
+	<header class="drawHeader">
+
+	    <!-- 一覧へ -->
+	    <button id="sendBtn" class="headerButton backButton">
+	        <i class="fa-solid fa-arrow-left"></i>
+	        一覧へ 
+	    </button>
+
+	    <div class="toolArea">
+
+	        <!-- 一つ戻る -->
+	        <button id="undoBtn" class="toolButton" title="一つ戻る">
+	            <i class="fa-solid fa-rotate-left"></i>
+	        </button>
+
+	        <!-- やり直す -->
+	        <button id="redoBtn" class="toolButton" title="やり直す">
+	            <i class="fa-solid fa-rotate-right"></i>
+	        </button>
+
+	        <!-- ペン -->
+	        <button id="penBtn" class="toolButton activeTool" title="ペン">
+	            <i class="fa-solid fa-pen"></i>
+	        </button>
+
+	        <!-- 消しゴム -->
+	        <button id="eraserBtn" class="toolButton" title="消しゴム">
+	            <i class="fa-solid fa-eraser"></i>
+	        </button>
+			
+<!--			消しゴムの大きさを変えるポップアップ-->
+			<div id="eraserMenu" class="eraserMenu">
+
+			    <button id="eraserSmallBtn" class="eraserSizeBtn">
+			        <i id="eraserSmallIcon" class="fa-solid fa-circle"></i>
+			    </button>
+
+			    <button id="eraserMediumBtn" class="eraserSizeBtn">
+			        <i id="eraserMediumIcon" class="fa-solid fa-circle"></i>
+			    </button>
+
+			    <button id="eraserLargeBtn" class="eraserSizeBtn">
+			        <i id="eraserLargeIcon" class="fa-solid fa-circle"></i>
+			    </button>
+
+			</div>
+
+<!--	         背景表示 -->
+<!--	        <button id="toggleBgBtn" class="toolButton" title="背景表示切替">-->
+<!--	            <i class="fa-regular fa-image"></i>-->
+<!--	        </button>-->
+
+<!--メニュー-->
+<div class="bgMenu">
+
+    <details>
+
+        <summary class="toolButton">
+            <i class="fa-regular fa-image"></i>
+        </summary>
+
+        <div class="bgDropdown">
+
+			<button id="toggleBgBtn" class="bgMenuButton">
+			    <i class="fa-regular fa-image"></i>
+			    <span id="toggleBgText">背景を非表示</span>
+			</button>
+			
+			<button class="bgMenuButton" id="saveDeviceBtn">
+				 <i class="fa-solid fa-download"></i>
+				<sapn>端末に保存</sapn>
+			</button>
+			
+			<div th:if="${karteId!=null}">
+			   
+			   <button id="delete" class="bgMenuButton"
+			   		  onclick="openDeleteDialog()">
+			   		<i class="fa-solid fa-trash"></i>
+					<span>カルテを削除</span>
+			   	    </button>
+			       </div>
+				   
+				   
+			<div th:if="${karteId==null}">
+				
+				<button id="delete" type="button" class="bgMenuButton" onclick="openDeleteDialog()">
+							<i class="fa-solid fa-trash"></i>
+							<span>保存せず一覧へ</span>
+					
+						</button>
+			
+			</div>
+
+        </div>
+
+    </details>
+
+</div>
+</div>
+
+	</header>  <!--
+    背景画像(karte.jpg / static配下に配置)は900×1200なので、キャンバスもそのサイズに固定する。
+
+    消しゴム機能のために、キャンバスを2枚に分けている。
+    ・bgCanvas … 背景画像(karte.jpg)専用。ここには絶対にストロークを描かない。
+    ・canvas   … ペン/消しゴムのストローク専用。この上に重ねて表示する。
+
+    さらにiPad対応（ピンチズーム）のために、もう1階層外側にviewportを追加している。
+    ・viewport      … 実際に画面に見えている「窓」。サイズは固定(900×1200)で、はみ出た部分は隠す(overflow:hidden)。
+    ・canvasWrapper … bgCanvasとcanvasをまとめて持つ箱。ズーム/パン操作は、このcanvasWrapperに
+                      CSSのtransform(scale・translate)をかけることで実現する。
+                      ※ここが重要：中身のcanvasの解像度(900×1200)やstrokesの座標データは一切変えない。
+                        あくまで「見た目の表示位置・大きさ」だけを動かしている。
+  -->
+  
+  <div id="viewport" style="position: relative; width: 900px; height: 1200px; overflow: hidden; border: 1px solid #000; touch-action: none;">
+    <div id="canvasWrapper" style="position: absolute; top: 0; left: 0; width: 900px; height: 1200px; transform-origin: 0 0;">
+      <canvas id="bgCanvas" width="900" height="1200"
+       style="position: absolute; top: 0; left: 0;"></canvas>
+      <canvas id="canvas" width="900" height="1200"
+       style="position: absolute; top: 0; left: 0; cursor: crosshair; touch-action: none;"></canvas>
+    </div>
+    <!--
+      消しゴムの大きさ・位置を示すための円。
+      canvasWrapperの「外」に置いているのがポイント：canvasWrapperはズームでtransformがかかるが、
+      このカーソルは常にviewport基準の座標に自前で位置・サイズを計算して表示するため、ここに置く。
+    -->
+    <div id="eraserCursor" style="position: absolute; border: 1px solid #000; border-radius: 50%; box-sizing: border-box; pointer-events: none; display: none;"></div>
+  </div>
+  <br>
+  <p id="status" style="display:none;"></p>
+  
+  
+  <!-- ツール切り替え。今どちらが選ばれているかは currentTool 変数で管理する -->
+<!--  <button id="penBtn">ペン</button>-->
+<!--  <button id="eraserBtn">消しゴム</button>-->
+  <span id="toolLabel" style="display:none;">現在のツール: ペン</span>
+<!--  <br>-->
+<!--   消しゴムの大きさ切り替え。今どれが選ばれているかは eraserWidth 変数で管理する -->
+<!--  <button id="eraserSmallBtn">消しゴム(小)</button>-->
+<!--  <button id="eraserMediumBtn">消しゴム(中)</button>-->
+<!--  <button id="eraserLargeBtn">消しゴム(大)</button>-->
+<!--  <br><br>-->
+<!--  <button id="undoBtn">一つ戻る</button>-->
+<!--  <button id="redoBtn">やり直す</button>-->
+<!--  <button id="sendBtn">送信</button>-->
+<!--   背景画像(karte.jpg)の表示・非表示切り替え。bgCanvas自体の表示/非表示を切り替えるだけなので、-->
+<!--       ストローク側(canvas)やstrokesのデータには一切影響しない -->
+<!--  <button id="toggleBgBtn">背景を非表示にする</button>-->
+
+
+
+  <!--
+    patientIdは新規・更新どちらの場合も必ず必要（誰の描画データかを区別するため）なので、
+    hidden inputとしてSpring側から常に埋め込んでもらう
+  -->
+  <input type="hidden"
+         id="patientId"
+         th:value="${patientId}">
+
+  <!-- karteIdはカルテ（描画データ）自体のID。更新の場合は既存のIDが入り、新規の場合は空（null）になる想定 -->
+  <input type="hidden"
+         id="karteId"
+         th:value="${karteId}">
+		 
+		 <!--削除時に出る確認ダイアログ-->
+		 <div id="deleteDialog" class="dialog" onclick="closeDeleteDialog()">
+
+		     <div class="dialogContent" onclick="event.stopPropagation()">
+
+		         <button class="closeButton" onclick="closeDeleteDialog()">
+		             <i class="fa-solid fa-xmark"></i>
+		         </button>
+
+		         <h2 th:text="${(karteId!= null ? 'このカルテを削除しますか？':'保存せず一覧へ戻りますか？')}"></h2>
+
+
+				<div th:if="${karteId!=null}">
+				 <form action="/delete-json" method="post">
+				 			<input type="hidden" name="id" th:value="${karteId}">
+				 			<button type="submit" class="menuButton">はい</button>
+				 		</form>
+                  </div>
+				  
+				  <div th:if="${karteId==null}">
+					<button type="submit" class="menuButton" 
+					onclick="history.back();">はい</button>
+					</div>
+				  
+		         <button class="menuButton" onclick="closeDeleteDialog()">
+		             いいえ
+		         </button>
+
+		 		<p th:if="${karteId!=null}">注意【一度削除すると元に戻せません】</p>
+		     </div>
+
+		 </div>
+		 
+
+<script th:inline="javascript">
+	
+	
+	function openDeleteDialog() {
+		// メニューを閉じる
+		if (bgMenu.open) {
+		    bgMenu.removeAttribute("open");
+		}
+	      document.getElementById("deleteDialog").style.display = "flex";
+	  }
+
+	  function closeDeleteDialog() {
+	      document.getElementById("deleteDialog").style.display = "none";
+	  }
+	  
+	  
+
+	  
+	
+	const penBtn = document.getElementById("penBtn");
+	const eraserBtn = document.getElementById("eraserBtn");
+
+	const eraserSmallBtn = document.getElementById("eraserSmallBtn");
+	const eraserMediumBtn = document.getElementById("eraserMediumBtn");
+	const eraserLargeBtn = document.getElementById("eraserLargeBtn");
+
+    const viewport = document.getElementById('viewport');
+    const canvasWrapper = document.getElementById('canvasWrapper');
+
+    const bgCanvas = document.getElementById('bgCanvas'); // 背景画像専用キャンバス
+    const bgCtx = bgCanvas.getContext('2d');
+
+    const canvas = document.getElementById('canvas');     // ストローク（ペン/消しゴム）専用キャンバス
+    const ctx = canvas.getContext('2d');
+	
+	const undoBtn = document.getElementById("undoBtn"); //ひとつ戻る
+	const redoBtn = document.getElementById("redoBtn"); //やり直し
+
+    const status = document.getElementById('status');
+    const toolLabel = document.getElementById('toolLabel');
+    const eraserCursor = document.getElementById('eraserCursor'); // 消しゴムの位置・大きさを示す円
+
+    let drawing = false;    //今書いてるか（指/マウスが1本だけ触れて描画中か）
+    let strokes = [];       // 確定済みストローク全て（新規なら空、更新なら受信データ＋追記した線）
+    let currentStroke = []; // 現在描画中のストローク（今書いてる線の点だけを一時的に貯める配列）
+    let strokeStartTime = 0; // 今の描画（or タップ）が始まった時刻。タップかどうかの判定に使う
+    const patientId = document.getElementById('patientId').value;
+    const karteId = document.getElementById("karteId").value;
+
+    // やり直し(redo)用のスタック。undoでstrokesから取り除いた要素を一時的にここへ積んでおく
+    // 最大5件までしか保持しない（それより古いやり直し履歴は捨てる）
+    let redoStack = [];
+    const MAX_REDO = 5;
+
+    // ここからツール（ペン／消しゴム）の設定
+    let currentTool = 'pen'; // 'pen' か 'eraser' のどちらか
+    const PEN_COLOR = '#000000';
+    const PEN_WIDTH = 2;
+
+    // 消しゴムの太さは固定値ではなく、ボタンで小・中・大を選べるようにする
+    const ERASER_SIZES = { small: 20, medium: 50, large: 100 }; // 値は好みで調整してよい
+    let eraserWidth = ERASER_SIZES.medium; // 初期値は「中」にしておく
+
+	let edited = false; // 一度でも編集したらtrue。無編集の場合をurlで返すために使う
+	
+	function updateToolButton() {
+
+	    penBtn.classList.remove("activeTool");
+	    eraserBtn.classList.remove("activeTool");
+
+	    if (currentTool === "pen") {
+	        penBtn.classList.add("activeTool");
+	    } else {
+	        eraserBtn.classList.add("activeTool");
+	    }
+
+	}
+
+	function updateEraserSizeButton() {
+
+	    eraserSmallBtn.classList.remove("selected");
+	    eraserMediumBtn.classList.remove("selected");
+	    eraserLargeBtn.classList.remove("selected");
+
+	    if (eraserWidth === ERASER_SIZES.small) {
+	        eraserSmallBtn.classList.add("selected");
+	    }
+
+	    if (eraserWidth === ERASER_SIZES.medium) {
+	        eraserMediumBtn.classList.add("selected");
+	    }
+
+	    if (eraserWidth === ERASER_SIZES.large) {
+	        eraserLargeBtn.classList.add("selected");
+	    }
+
+	}
+	
+	penBtn.addEventListener("click", () => {
+
+	    currentTool = "pen";
+
+	    toolLabel.textContent = "現在のツール: ペン";
+
+	    eraserCursor.style.display = "none";
+
+	    updateToolButton();
+
+	});
+	eraserBtn.addEventListener("click", () => {
+
+	    currentTool = "eraser";
+
+	    toolLabel.textContent = "現在のツール: 消しゴム";
+
+	    updateToolButton();
+
+	});
+
+    // 消しゴムのサイズ切り替えボタン
+    // ※サイズボタンを押しただけではツールは切り替えない（サイズだけを変える）。
+    //   これは「まだペンを使っているのに誤って消しゴムに切り替わる」事故を防ぐため。
+    //   サイズを選んだら消しゴムに切り替えたい、という挙動の方が自然であれば変更可能。
+    document.getElementById('eraserSmallBtn').addEventListener('click', () => {
+      eraserWidth = ERASER_SIZES.small; updateEraserSizeButton();
+    });
+    document.getElementById('eraserMediumBtn').addEventListener('click', () => {
+      eraserWidth = ERASER_SIZES.medium; updateEraserSizeButton();
+    });
+    document.getElementById('eraserLargeBtn').addEventListener('click', () => {
+      eraserWidth = ERASER_SIZES.large; updateEraserSizeButton();
+    });
+
+    // ここから背景画像の準備
+    const bgImage = new Image();
+    // karte.jpgはsrc/main/resources/static配下に置く想定
+    bgImage.src = [[@{/karte.jpg}]];
+
+    bgImage.onerror = () => {
+      status.textContent = '背景画像の読み込みに失敗しました。パスを確認してください。';
+    };
+
+    bgImage.onload = () => {
+      bgCtx.drawImage(bgImage, 0, 0, bgCanvas.width, bgCanvas.height);
+    };
+
+	//ストローク用キャンバスだけを全部消して再描画
+	//※背景画像はbgCanvas側にあるので、ここでは触らない
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const stroke of strokes) {
+        drawStroke(stroke);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+	//一本の線を書く（penかeraserかでモードを切り替える）
+    function drawStroke(stroke) {
+      const points = stroke.points;
+      if (!points || points.length === 0) return;
+
+      ctx.beginPath();
+      if (stroke.type === 'eraser') {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = stroke.lineWidth || ERASER_SIZES.medium;
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = stroke.color || PEN_COLOR;
+        ctx.lineWidth = stroke.lineWidth || PEN_WIDTH;
+      }
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.stroke();
+	  
+    }
+
+    // 新規／更新の切り替え（変更なし）
+    window.addEventListener('DOMContentLoaded', () => {
+	  const raw = [[${drawingData}]];//json文字列を取得（新規の場合はnullが入ってくる想定）
+
+      if (!raw) {
+        strokes = [];
+        status.textContent = '新規描画です。';
+      } else {
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch (e) {
+          status.textContent = 'JSONの解析に失敗しました。';
+          return;
+        }
+        strokes = data.strokes || [];
+        status.textContent = `再描画完了（ストローク数: ${strokes.length}）`;
+      }
+
+      redraw();
+	  updateToolButton();
+	  updateEraserSizeButton();
+	  updateUndoRedoButton();
+    });
+
+    // =========================================================
+    // ここから、iPad対応（指で描画 ＋ ピンチズーム）のための処理
+    // =========================================================
+
+    // 今のズーム倍率・表示位置のズレ（canvasWrapperにかけているtransformの値そのもの）
+    let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
+    const MIN_SCALE = 1;   // これ以上縮小はしない（等倍が最小）
+    const MAX_SCALE = 5;   // これ以上は拡大しない（値は好みで調整してよい）
+
+    // canvasWrapperに今のscale/translateを反映する
+    function applyTransform() {
+      canvasWrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
+
+    // 今画面に触れている指（ポインター）を、pointerId をキーにして管理する
+    // 例：{ 12: {x:100,y:200}, 13: {x:300,y:400} } のように、指ごとの最新座標を持つ
+    const activePointers = new Map();
+
+    // ピンチズーム中かどうかのフラグ。
+    // 一度trueになったら、指が全部離れるまでfalseに戻さない（描画モードへ誤って戻らないようにするため）
+    let isPinching = false;
+    let pinchPointerIds = [];      // ズーム操作に使っている2本の指のID（この2本だけを追跡する）
+    let pinchStartDist = 0;        // ピンチ開始時の、2本の指の距離
+    let pinchStartScale = 1;       // ピンチ開始時のscale
+    let pinchStartCenter = { x: 0, y: 0 };     // ピンチ開始時の、2本の指の中点（viewport基準の座標）
+    let pinchStartTranslate = { x: 0, y: 0 };  // ピンチ開始時のtranslateX/Y
+
+    // イベントから、viewport基準（左上を0,0とする）のスクリーン座標を取り出す
+    function getViewportPoint(e) {
+      const rect = viewport.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    // スクリーン座標 → キャンバス内部座標（900×1200の座標系）へ変換する
+    // 今表示上どれだけ拡大・移動しているか(scale/translate)を「逆算」して元の座標に戻すイメージ
+    function screenToCanvas(pt) {
+      return {
+        x: (pt.x - translateX) / scale,
+        y: (pt.y - translateY) / scale
+      };
+    }
+
+    function distanceBetween(p1, p2) {
+      const dx = p1.x - p2.x;
+      const dy = p1.y - p2.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function midpointOf(p1, p2) {
+      return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    }
+
+    // 消しゴムの位置・大きさを示す円を、今のポインター位置に合わせて更新する
+    // 半径はeraserWidth(キャンバス内部座標での太さ)に現在のズーム倍率(scale)を掛けて、
+    // 「画面上で実際に消える範囲」と見た目が一致するようにしている
+    function updateEraserCursor(pt) {
+      if (currentTool !== 'eraser' || isPinching) {
+        eraserCursor.style.display = 'none';
+        return;
+      }
+      const radius = (eraserWidth / 2) * scale;
+      eraserCursor.style.width = `${radius * 2}px`;
+      eraserCursor.style.height = `${radius * 2}px`;
+      eraserCursor.style.left = `${pt.x - radius}px`;
+      eraserCursor.style.top = `${pt.y - radius}px`;
+      eraserCursor.style.display = 'block';
+    }
+
+    // 2本目の指が触れた瞬間に呼ばれる：ここからピンチズーム操作を開始する
+    function startPinch() {
+      isPinching = true;
+      pinchPointerIds = Array.from(activePointers.keys()).slice(0, 2); // 最初の2本のIDだけを使う
+      const p1 = activePointers.get(pinchPointerIds[0]);
+      const p2 = activePointers.get(pinchPointerIds[1]);
+
+      pinchStartDist = distanceBetween(p1, p2);
+      pinchStartScale = scale;
+      pinchStartCenter = midpointOf(p1, p2);
+      pinchStartTranslate = { x: translateX, y: translateY };
+    }
+
+    // ピンチ中に指が動くたびに呼ばれる：距離の変化率からscaleを、中点のズレからtranslateを計算する
+    function updatePinch() {
+      // ピンチ開始時に決めた「2本の指」が両方ともまだ画面に触れているかを確認する
+      // （3本目・4本目が触れても無視して、この2本の位置だけを使い続ける）
+      const p1 = activePointers.get(pinchPointerIds[0]);
+      const p2 = activePointers.get(pinchPointerIds[1]);
+      if (!p1 || !p2) return; // どちらか片方が離れた場合は、それ以上ズームを更新しない（フリーズ）
+
+      const newDist = distanceBetween(p1, p2);
+      const newCenter = midpointOf(p1, p2);
+
+      let newScale = pinchStartScale * (newDist / pinchStartDist);
+      newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+
+      // ピンチの中心点が画面上でズレないように、拡大率の変化に合わせてtranslateも一緒にずらす
+      // （iOSの写真アプリなどでピンチした指の位置がそのまま拡大の中心になるのと同じ考え方）
+      translateX = newCenter.x - (pinchStartCenter.x - pinchStartTranslate.x) * (newScale / pinchStartScale);
+      translateY = newCenter.y - (pinchStartCenter.y - pinchStartTranslate.y) * (newScale / pinchStartScale);
+      scale = newScale;
+
+      applyTransform();
+    }
+
+    // ---- 指が触れた瞬間 ----
+    canvas.addEventListener('pointerdown', (e) => {
+      canvas.setPointerCapture(e.pointerId); // 指がcanvasの外に出ても、move/upイベントを追い続けられるようにする
+      const pt = getViewportPoint(e);
+      activePointers.set(e.pointerId, pt);
+
+      if (activePointers.size === 1 && !isPinching) {
+        // 触れている指が1本だけ、かつピンチ中でもない → 通常の描画モードとして開始する
+        drawing = true;
+		eraserMenu.style.display = "none"; //描画モードの開始時に消しゴムポップアップを非表示
+        currentStroke = [];
+        strokeStartTime = Date.now(); // タップかどうかを後で判定するために開始時刻を記録
+        const canvasPt = screenToCanvas(pt); // 画面上の座標を、キャンバス内部の座標に変換してから記録する
+        currentStroke.push(canvasPt);
+
+        ctx.beginPath();
+        if (currentTool === 'eraser') {
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.lineWidth = eraserWidth;
+        } else {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeStyle = PEN_COLOR;
+          ctx.lineWidth = PEN_WIDTH;
+        }
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(canvasPt.x, canvasPt.y);
+
+      } else if (activePointers.size === 2 && !isPinching) {
+        // 2本目の指が触れた瞬間 → ズーム/パンモードに切り替える
+        if (drawing) {
+          // 描きかけの線があれば破棄する（確定済みのstrokesには含まれていないので、
+          // redraw()するだけで「描きかけの線」だけがキャンバスから消える）
+          drawing = false;
+          currentStroke = [];
+          redraw();
+        }
+        startPinch();
+        eraserCursor.style.display = 'none'; // ズーム操作中は消しゴムカーソルを表示しない
+      }
+      // 3本目以降の指は無視する（isPinchingが既にtrueならズームはそのまま継続）
+    });
+
+    // ---- 指が動いた ----
+    canvas.addEventListener('pointermove', (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      const pt = getViewportPoint(e);
+      activePointers.set(e.pointerId, pt);
+
+      updateEraserCursor(pt); // 消しゴム選択中は、常にこの位置にカーソルの円を追従させる
+
+      if (isPinching) {
+        updatePinch();
+        return;
+      }
+
+      if (drawing) {
+		edited = true; //編集済みなので、springに送るフラグ
+		
+        const canvasPt = screenToCanvas(pt);
+        currentStroke.push(canvasPt);
+        ctx.lineTo(canvasPt.x, canvasPt.y);
+        ctx.stroke();
+      }
+    });
+
+    // マウスがcanvasの外に出たら、消しゴムカーソルも消す（触れていない場所に円が残らないように）
+    canvas.addEventListener('pointerleave', () => {
+      eraserCursor.style.display = 'none';
+    });
+
+    // ---- 指が離れた（uploadやcancelも同様に扱う） ----
+    function endPointer(e) {
+      activePointers.delete(e.pointerId);
+
+      // タッチの場合はホバー状態が無い（指を離した瞬間に完全に触れていない状態になる）ので、
+      // マウスと違い、離れたら消しゴムカーソルも消す
+      if (e.pointerType !== 'mouse' && activePointers.size === 0) {
+        eraserCursor.style.display = 'none';
+      }
+
+      if (isPinching) {
+        // 全部の指が離れたときだけズーム/パンモードを終了する。
+        // 2本→1本に減っただけでは描画モードには戻さない（誤って線が引かれるのを防ぐため）
+        if (activePointers.size === 0) {
+          isPinching = false;
+        }
+        return;
+      }
+
+      if (drawing && activePointers.size === 0) {
+        endDraw();
+      }
+    }
+    canvas.addEventListener('pointerup', endPointer);
+    canvas.addEventListener('pointercancel', endPointer);
+
+    // ---- ダブルタップ判定のための設定 ----
+    // 「タップ」とみなす条件：ほとんど動かず(TAP_MAX_MOVEMENT未満)、かつ短時間(TAP_MAX_DURATION未満)で指を離した場合
+    const TAP_MAX_DURATION = 250;  // ms
+    const TAP_MAX_MOVEMENT = 8;    // キャンバス内部座標でのpx
+    const DOUBLE_TAP_INTERVAL = 300; // ms。この時間内に2回タップされたらダブルタップと判定する
+    let lastTapTime = 0;
+
+    // strokeの中で、最初の点から一番離れた点までの距離を求める（タップ＝ほぼ動いていない、の判定に使う）
+    function strokeMaxMovement(points) {
+      if (points.length === 0) return 0;
+      const start = points[0];
+      let max = 0;
+      for (const p of points) {
+        const d = distanceBetween(start, p);
+        if (d > max) max = d;
+      }
+      return max;
+    }
+
+    // 描画確定処理（ペン/消しゴムの別も一緒に保存する）
+    function endDraw() {
+      drawing = false;
+
+      const duration = Date.now() - strokeStartTime;
+      const movement = strokeMaxMovement(currentStroke);
+      const wasTap = currentStroke.length > 0 && duration < TAP_MAX_DURATION && movement < TAP_MAX_MOVEMENT;
+
+      if (wasTap) {
+        // 線を引いたのではなく「軽くタップしただけ」とみなし、点(ドット)としては残さない
+        currentStroke = [];
+        redraw(); // beginPath〜stroke()で一瞬だけ描かれていた点を消す
+
+        const now = Date.now();
+        if (now - lastTapTime < DOUBLE_TAP_INTERVAL) {
+          // ダブルタップとみなして「一つ戻る」を実行する
+          performUndo();
+          lastTapTime = 0; // 3回連続タップなどでの誤検知を防ぐためリセット
+        } else {
+          lastTapTime = now;
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        return;
+      }
+
+      // 実際に線を引いた場合は、タップ判定もリセットしておく
+      lastTapTime = 0;
+
+      if (currentStroke.length > 0) {
+        strokes.push({
+          type: currentTool,
+          color: currentTool === 'eraser' ? undefined : PEN_COLOR,
+          lineWidth: currentTool === 'eraser' ? eraserWidth : PEN_WIDTH,
+          points: currentStroke
+        });
+        // 新しく線を描いたら、やり直し(redo)の履歴は破棄する（一般的なUndo/Redoの仕様と同じ）
+        redoStack = [];
+        currentStroke = [];
+		updateUndoRedoButton();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // 「一つ戻る」の実体。ボタンからもダブルタップからも、この関数を共通で呼び出す
+    function performUndo() {
+      if (strokes.length === 0) return;
+      const popped = strokes.pop();
+      redoStack.push(popped);
+      if (redoStack.length > MAX_REDO) {
+        redoStack.shift(); // 6件目以降が入ってきたら、一番古いやり直し履歴を捨てる
+      }
+      redraw();
+	  updateUndoRedoButton();
+    }
+
+    // 「やり直す(redo)」の実体
+    function performRedo() {
+      if (redoStack.length === 0) return;
+      const restored = redoStack.pop();
+      strokes.push(restored);
+      redraw();
+	  updateUndoRedoButton();
+    }
+	
+	//7-29追加　多分線保存配列がないときに無いよって教えるための関数
+	function updateUndoRedoButton(){
+
+	    undoBtn.disabled = (strokes.length === 0);
+	    redoBtn.disabled = (redoStack.length === 0);
+}
+	
+
+//一つ戻すボタンがクリックされたら
+    document.getElementById('undoBtn').addEventListener('click', performUndo);
+//やり直すボタンがクリックされたら
+    document.getElementById('redoBtn').addEventListener('click', performRedo);
+
+    // 背景表示・非表示の切り替え
+    // bgCanvas自体の見た目(display)を切り替えるだけなので、strokesのデータや送信内容には一切影響しない
+    let bgVisible = true;
+
+	const toggleBgBtn = document.getElementById("toggleBgBtn");
+	const toggleBgText = document.getElementById("toggleBgText");
+
+	toggleBgBtn.addEventListener("click", () => {
+
+	    bgVisible = !bgVisible;
+
+	    bgCanvas.style.display = bgVisible ? "block" : "none";
+
+	    toggleBgText.textContent =
+	        bgVisible ? "背景を非表示" : "背景を表示";
+			toggleBgBtn.closest("details").removeAttribute("open");
+
+	});
+//送信ボタンを押したら（新規・更新どちらも同じ形式で送信する）
+document.getElementById('sendBtn').addEventListener('click', () => {
+  
+
+	// 編集されていないなら保存せず戻る
+	if (!edited) {
+//	    window.location.href = "/show_karte/" + patientId;
+history.back();
+	    return;
+	}
+	
+	const data = {
+	karteId: karteId || null,
+	patientId: patientId,
+    width: canvas.width,
+    height: canvas.height,
+    strokes: strokes // 各要素は { type, color, lineWidth, points } の形で送られる
+                      // ※points(x,y)は常にキャンバス内部座標(900×1200の座標系)であり、
+                      //   画面上のズーム倍率(scale)の影響は一切受けていない
+  };
+  fetch('/saveDrawing', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.text())
+  .then(url => {
+    window.location.href = url;//カルテ一覧に戻る
+  });
+
+});
+
+//消しゴムのポップアップ
+//const eraserBtn = document.getElementById("eraserBtn");
+const eraserMenu = document.getElementById("eraserMenu");
+
+eraserBtn.addEventListener("click", (e) => {
+
+    e.stopPropagation();
+
+    if (eraserMenu.style.display === "flex") {
+        eraserMenu.style.display = "none";
+    } else {
+        eraserMenu.style.display = "flex";
+    }
+
+});
+
+document.addEventListener("click", () => {
+    eraserMenu.style.display = "none";
+});
+//メニュープルダウン
+
+const bgMenu = document.querySelector(".bgMenu details");
+
+document.addEventListener("click", (e) => {
+
+    // メニューが開いていて、クリックした場所がメニューの外なら閉じる
+    if (bgMenu.open && !bgMenu.contains(e.target)) {
+        bgMenu.removeAttribute("open");
+    }
+
+});
+
+// ======================
+// 端末に保存
+// ======================
+
+// 端末に保存ボタン
+const saveDeviceBtn = document.getElementById("saveDeviceBtn");
+
+
+function createFileName() {
+
+    const now = new Date();
+
+    const yyyy = now.getFullYear();
+    const MM = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+
+    return `karte${karteId}_${yyyy}${MM}${dd}_${hh}${mm}${ss}.png`;
+}
+
+
+// ボタンが存在する場合のみイベントを登録
+if (saveDeviceBtn) {
+
+    saveDeviceBtn.addEventListener("click", () => {
+
+		// 一時的なキャンバスを作る
+		const tempCanvas = document.createElement("canvas");
+		tempCanvas.width = canvas.width;
+		tempCanvas.height = canvas.height;
+
+		const tempCtx = tempCanvas.getContext("2d");
+
+		// ①背景を描く
+		tempCtx.drawImage(bgCanvas, 0, 0);
+
+		// ②ストロークを重ねる
+		tempCtx.drawImage(canvas, 0, 0);
+
+		// PNGへ変換
+		const image = tempCanvas.toDataURL("image/png");
+
+		// ダウンロード
+		const link = document.createElement("a");
+		link.download = createFileName();
+		link.href = image;
+		link.click();
+    });
+
+}
+
+
+
+
+  </script>
+</body>
+</html>

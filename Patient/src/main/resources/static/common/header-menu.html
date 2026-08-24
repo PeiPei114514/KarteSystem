@@ -1,0 +1,51 @@
+
+<div class="header-menu">
+<details>
+        <summary class="header-right">
+			<i class="fa-solid fa-bars"></i>
+           
+        </summary>
+
+        <div class="menu-dropdown">
+            <a href="/top_back">
+				 <i class="fa-solid fa-house"></i>トップに戻る</a>
+            <a href="/insert_form">
+					<i class="fa-solid fa-plus"></i>患者追加</a>
+            <a href="/detail">
+					<i class="fa-solid fa-magnifying-glass"></i>患者検索</a>
+            <a href="#"　 class="logout-menu"  onclick="openLogoutDialog(event)">
+				<i class="fa-solid fa-user"></i>ログアウト</a>
+        </div>
+
+    </details>
+
+</div>
+
+
+
+<!-- ログアウト確認ダイアログ -->
+<div id="logoutDialog" class="dialog" onclick="closeLogoutDialog()">
+
+    <div class="dialogContent" onclick="event.stopPropagation()">
+
+        <button class="closeButton" onclick="closeLogoutDialog()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <h2>ログアウトしますか？</h2>
+
+        <button type="button" class="menuButton"
+                onclick="location.href='/login'">
+            はい
+        </button>
+
+        <button type="button" class="menuButton"
+                onclick="closeLogoutDialog()">
+            いいえ
+        </button>
+
+        <p>ログアウトしてよろしいですか？</p>
+
+    </div>
+
+</div>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<link rel="stylesheet"
+         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body class="karte-quest-list-page">
+	
+	<!-- 新規追加ボタン -->
+	<button type="button" class="fab-button" onclick="openDialog()">
+	    <i class="fa-solid fa-plus"></i>
+	</button>
+	<header class="app-header">
+
+		<form th:action="@{/back_show_patient/{id}(id=${patient.id})}" method="post">
+
+		    <input type="hidden" name="page" th:value="${currentPage}">
+			<input type="hidden" name="type" value="karte">
+
+		    <button type="submit" class="header-left">
+		        <i class="fa-solid fa-chevron-left"></i>
+		    </button>
+		</form>
+
+		<div class="header-center">
+
+		       
+	    <div class="header-center">
+	        <div class="header-main">
+	          カルテ一覧
+	        </div>
+	    </div>
+		<div class="header-sub">
+		    <span th:text="${patient.namae + '　　'}"></span>
+		    <span th:if="${patient.age!=null}" th:text="${'(' + patient.age + ')'}"></span>
+		    <span th:if="${patient.sex!=null}" th:text="${'　　（' + (patient.sex == 'M' ? '男' : '女') + '）'}"></span>
+		</div>
+				</div>
+		<div id="header"></div>
+			<script src="/common/header-menu.js"></script>
+
+	</header>
+
+
+<!--	<form th:action="@{/back_show_patient/{id}(id=${patient.id})}" method="post">-->
+<!--			<input type="submit" value="戻る">-->
+<!--	</form>-->
+	
+<!--	<h3>追加</h3>-->
+	
+<!--		<form action="/new_upload_karte" method="post" enctype="multipart/form-data">-->
+<!--			enctypeがないとファイルの名前しか送られない-->
+<!--			<input type="file" name="img_file" accept="image/*" required>-->
+<!--			<input type="hidden" name="id" th:value="${patient.id}">-->
+<!--			<button type="submit">アップロード</button>	-->
+<!--			<input type="submit" value="アップロード">-->
+<!--		</form>-->
+		
+<!--		<form th:action="@{/upload_drawing/{id}(id=${patient.id})}" method="get">-->
+<!--		    <input type="submit" value="カルテを書く">-->
+<!--			</form>-->
+		
+<main class="questMain">
+	
+			<div class="karte-list">
+			
+<!--	<div class="karte_position" th:each="karte : ${patient.karteList}">-->
+		<div class="karte_position" th:each="karte:${questPage.content}">
+	 <span th:if="${karte.drawJson==null}">
+		<a th:href="@{/show_karte_detail/{id}(id=${karte.id})}">
+		 <img th:src="@{/images/{img}(img=${karte.imgFilePath})}" 
+		width="240" height="320" alt="カルテの画像">
+		</a>
+	 </span>
+	 <span th:unless="${karte.drawJson==null}">
+		<a th:href="@{/viewer/{id}(id=${karte.id})}">
+			<img th:src="@{/img/dummy_karte.jpg}"width="240" height="320" alt="カルテの画像">
+<!--			<img th:src="@{/images/{img}(img=${karte.imgFilePath})}" -->
+<!--				width="180" height="240" alt="カルテの画像">-->
+<!--		<p>ダミー画像</p>-->
+	   </a>
+	 </span>
+		<p th:text="${#temporals.format(karte.updateDate,'yyyy/MM/dd')}"></p>
+	</div>
+	</div>
+	
+	<div class="pageArea" th:if="${questPage.totalElements > 0}">
+
+	    <a th:if="${questPage.hasPrevious()}"
+	       th:href="@{/show_karte/{id}(id=${patient.id},page=${currentPage-1})}">
+	        ＜
+	    </a>
+
+	    <span th:each="i : ${#numbers.sequence(0, questPage.totalPages-1)}">
+
+	        <a th:if="${i != currentPage}"
+	           th:href="@{/show_karte/{id}(id=${patient.id},page=${i})}"
+	           th:text="${i+1}"></a>
+
+	        <span th:if="${i == currentPage}"
+	              th:text="${i+1}"></span>
+
+	    </span>
+
+	    <a th:if="${questPage.hasNext()}"
+	       th:href="@{/show_karte/{id}(id=${patient.id},page=${currentPage+1})}">
+	        ＞
+	    </a>
+
+	</div>
+	</main>
+	
+	<form action="/new_upload_karte"
+	      method="post"
+	      enctype="multipart/form-data"
+	      id="karteUploadForm">
+
+	    <input
+	        type="file"
+	        id="karteFile"
+	        name="img_file"
+	        accept="image/*"
+	        hidden>
+			<input type="hidden" name="id" th:value="${patient.id}">
+	</form>
+	
+	<!--カルテの追加方法を選択するダイアログ-->
+	<div id="dialog" class="dialog" onclick="closeDialog()">
+
+	    <div class="dialogContent" onclick="event.stopPropagation()">
+			
+
+			    <button class="closeButton" onclick="closeDialog()">
+			        <i class="fa-solid fa-xmark"></i>
+			    </button>
+
+	        <h2>新規作成</h2>
+
+	        <button   class="menuButton" onclick="document.getElementById('karteFile').click()">
+				
+				<i class="fa-solid fa-camera"></i>
+	            写真から作成
+	        </button>
+
+	        <button  class="menuButton"  th:onclick="|location.href='@{/upload_drawing/{id}(id=${patient.id})}'|">
+	           <i class="fa-solid fa-pen"></i>お絵かきで作成
+	        </button>
+
+
+
+	    </div>
+
+	</div>
+
+	<script>
+	  function openDialog() {
+	      document.getElementById("dialog").style.display = "flex";
+	  }
+
+	  function closeDialog() {
+	      document.getElementById("dialog").style.display = "none";
+	  }
+	  
+
+
+	const karteFile = document.getElementById("karteFile");
+
+	karteFile.addEventListener("change", function () {
+	    if (this.files.length > 0) {
+	        document.getElementById("karteUploadForm").submit();
+	    }
+		});
+
+	  
+
+	  
+	//
+	//  // ファイルを選択したら自動送信
+	//  document.getElementById("file").addEventListener("change", function () {
+	//      if (this.files.length > 0) {
+	//          document.getElementById("uploadForm").submit();
+	//      }
+
+	  </script>
+	
+<!--	<img src="/images/tanaka.png">-->
+</body>
+</html>

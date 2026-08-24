@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>show-dialog</title>
+</head>
+<body>
+	<div id="dialog" class="dialog">
+
+	    <div class="dialogContent"  onclick="event.stopPropagation()">
+			
+
+			    <button class="closeButton" onclick="closeDialog()">
+			        <i class="fa-solid fa-xmark"></i>
+			    </button>
+
+	        <h2>新規追加</h2>
+
+	        <button   class="menuButton" onclick="document.getElementById('file').click()">
+				
+				<i class="fa-solid fa-camera"></i>
+	            問診票から作成
+	        </button>
+
+	        <button  class="menuButton" onclick="location.href='/insert_form'">
+	           <i class="fa-solid fa-pen"></i>問診票なしで作成
+	        </button>
+
+	<!--        <button onclick="closeDialog()">-->
+	<!--            キャンセル-->
+	<!--        </button>-->
+
+	    </div>
+
+	</div>
+	
+	<script>
+	  function openDialog() {
+	      document.getElementById("dialog").style.display = "flex";
+	  }
+
+	  function closeDialog() {
+	      document.getElementById("dialog").style.display = "none";
+	  }
+
+	  const fileInput = document.getElementById("file");
+
+	  if (fileInput) {
+	      fileInput.addEventListener("change", function () {
+	          if (this.files.length > 0) {
+	              document.getElementById("uploadForm").submit();
+	          }
+	      });
+	  }
+	  </script>
+
+</body>
+</html>

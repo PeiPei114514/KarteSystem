@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+
+</head>
+<body>
+	
+	
+	
+	<div th:fragment="imageDetail(record, deleteUrl, updateUrl, uploadUrl, title)">
+
+
+
+		<div class="imageButtonArea">
+		<form th:action="${uploadUrl}"
+		      method="post"
+		      enctype="multipart/form-data"
+		      id="uploadForm">
+
+		    <input type="hidden" name="id" th:value="${record.id}">
+
+		    <input type="file"
+		           id="imgFile"
+		           name="img_file"
+		           accept="image/*"
+		           style="display:none"
+		           onchange="this.form.submit()">
+
+		    <button type="button"
+		            class="uploadButton"
+		            onclick="document.getElementById('imgFile').click()">
+		        更新
+		    </button>
+
+		</form>
+
+		<!-- 削除 -->
+		
+
+		    <button type="button" class="menuButtonDelete"
+			  onclick="openDeleteDialog()">
+				削除
+		    </button>
+			
+			<button type="button"
+			        class="menuButton-save"
+			        onclick="downloadImage()">
+			       <i class="fa-solid fa-download"></i>
+			</button>
+	
+		</div>
+			
+		<header class="app-header">
+
+			    <button type="button" onclick="history.back();" class="header-left">
+			        <i class="fa-solid fa-chevron-left"></i>
+			    </button>
+
+				<div class="header-center">
+			    <div class="header-center">
+			        <div class="header-main">
+			         <span　th:text="${title}"></span>
+			        </div>
+			    </div>
+
+				<div class="header-sub">
+							<span th:text="更新日+'　:　'+${#temporals.format(record.updateDate,'yyyy/MM/dd')}"></span>
+				</div>
+				</div>
+				<div id="header"></div>
+					<script th:src="@{/common/header-menu.js}"></script>
+
+			</header>
+		
+		
+
+<!--<p th:text="${#temporals.format(record.updateDate,'yyyy/MM/dd')}"></p>-->
+	  <div class="img-detail">
+		
+		 <img 
+		     id="detailImage"
+	         th:src="@{/images/{img}(img=${record.imgFilePath})}"
+	         width="900" 
+			 height="1200">
+			 </div> 
+
+	   
+			 <!--削除時に出る確認ダイアログ-->
+			 <div id="deleteDialog" class="dialog" onclick="closeDeleteDialog()">
+
+			     <div class="dialogContent">
+
+			         <button class="closeButton" onclick="closeDeleteDialog()">
+			             <i class="fa-solid fa-xmark"></i>
+			         </button>
+
+			         <h2>この患者を削除しますか？</h2>
+
+					 <form th:action="${deleteUrl}" method="post">
+					 	    <input type="hidden" name="id" th:value="${record.id}">
+			             <button type="submit" class="menuButton">はい</button>
+			         </form>
+
+			         <button class="menuButton" onclick="closeDeleteDialog()">
+			             いいえ
+			         </button>
+
+			 		<p>注意【一度削除すると元に戻せません】</p>
+			     </div>
+
+			 </div>
+			 
+			 
+			 
+
+	</div>
+	
+
+
+</body>
+</html>

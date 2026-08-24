@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<link rel="stylesheet"
+         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+	<header class="app-header">
+
+				<form action="/top_back">
+				<button type="submit" class="header-left">
+				     <i class="fa-solid fa-chevron-left"></i>
+				    </button>
+		</form>
+
+	    <div class="header-center">
+	        <div class="header-main">
+				<span th:text="${(patient.id == null ? '患者新規追加' : '患者更新')}"></span>
+								
+	        </div>
+	    </div>
+		<div id="header"></div>
+			<script src="/common/header-menu.js"></script>
+
+	</header>
+	
+	<div class="patient-card-detail">
+
+	    <!-- 左側 -->
+	    <div th:if="${patient.id==null}" class="left-panel">
+
+	        <h2>問診票画像</h2>
+
+			<!-- サーバに即送信するformはやめて、患者情報formに紐付けるだけのinputにする -->
+			<input id="img_file"
+			       type="file"
+			       name="img_file"
+			       accept="image/*"
+			       form="patientForm"
+			       style="display:none;">
+
+			<div class="image-box">
+			    <img id="questImage" style="display:none;">
+			    <div id="noImage" class="no-image">問診票</div>
+			</div>
+
+			<button type="button" id="uploadButton" class="insertmenuButton">
+			     <i id="uploadIcon" class="fa-solid fa-plus"></i>
+			     <span id="uploadLabel">新規</span>
+			</button>
+
+			<button type="button" id="clearButton" class="clearmenuButton">
+			    <i class="fa-solid fa-trash"></i>
+			    <span>クリア</span>
+			</button>
+
+	    </div>
+
+
+	    <!-- 右側 -->
+	    <div class="right-panel"
+		 th:classappend="${patient.id != null} ? ' right-panel-full' : ''">
+
+	        <h2>患者情報</h2>
+
+			<!-- id="patientForm" と enctype を追加。これが唯一サーバに送るform -->
+	        <form id="patientForm"
+	              action="/insert_patient"
+	              method="post"
+	              enctype="multipart/form-data"
+	              th:object="${patient}">
+
+	            <input type="hidden" th:field="*{id}">
+
+				<div class="form-group">
+				    <label>氏名（必須）</label>
+
+				    <input type="text"
+				           th:field="*{namae}"
+				           placeholder="山本　太郎">
+
+				    <div class="error"
+				         th:if="${#fields.hasErrors('namae')}"
+				         th:errors="*{namae}">
+				    </div>
+				</div>
+
+				<div class="form-group">
+<label>年齢</label>
+				    <div class="radio-group">
+						
+				        <label>
+				            <input type="radio"
+				                   name="ageType"
+				                   value="wareki"
+				                   onchange="changeAgeType()"
+								    th:checked="${ageType=='wareki' || ageType==null}">
+				            生年月日
+				        </label>
+
+				        <label>
+				            <input type="radio"
+				                   name="ageType"
+				                   value="age"
+				                   onchange="changeAgeType()"
+								   th:checked="${ageType=='age'}">
+				            年齢
+				        </label>
+
+				    </div>
+
+				</div>
+
+				<!-- 和暦入力 -->
+				<div class="form-group" id="warekiGroup">
+
+				    <div class="wareki-group">
+
+						<select name="era">
+						    <option value="R" th:selected="${wareki.era == 'R'}">令和</option>
+						    <option value="H" th:selected="${wareki.era == 'H'}">平成</option>
+						    <option value="S" th:selected="${wareki.era == 'S'}">昭和</option>
+						</select>
+
+						<input type="number"
+						       name="year"
+						       th:value="${wareki.year}"
+							    min="1">
+				        <span>年</span>
+						
+						<input type="number"
+						       name="month"
+						       th:value="${wareki.month}"
+							    min="1" max="12">
+				        <span>月</span>
+
+						<input type="number"
+						       name="day"
+						       th:value="${wareki.day}"
+							    min="1" max="31">
+				        <span>日</span>
+
+				    </div>
+
+				</div>
+		
+				<!-- 年齢入力 -->
+				<div class="form-group" id="ageGroup" style="display:none;">
+
+					<div class="age-input">
+					       <input type="number"
+					              th:field="*{age}"
+					              min="0">
+					       <span>歳</span>
+					   </div>
+
+				</div>
+				<div class="error"
+						     th:if="${!#strings.isEmpty(warekiError)}"
+						     th:text="${warekiError}">
+						</div>
+
+	            <div class="form-group">
+	                <label>性別</label>
+
+	                <div class="radio-group">
+	                    <label>
+	                        <input type="radio" th:field="*{sex}" value="M">
+	                        男
+	                    </label>
+
+	                    <label>
+	                        <input type="radio" th:field="*{sex}" value="F">
+	                        女
+	                    </label>
+	                </div>
+	            </div>
+
+	            <button class="mainButton" type="submit">
+	               <span th:text="${(patient.id == null ? '追加' : '更新')}"></span>
+	            </button>
+
+	        </form>
+
+	    </div>
+
+	</div>
+
+	<script>
+		const image = document.getElementById("questImage");
+		const noImage = document.getElementById("noImage");
+		const fileInput = document.getElementById("img_file");
+		const uploadButton = document.getElementById("uploadButton");
+		const uploadIcon = document.getElementById("uploadIcon");
+		const uploadLabel = document.getElementById("uploadLabel");
+		const clearButton = document.getElementById("clearButton");
+
+		if (image) {
+		    image.addEventListener("click", () => fileInput.click());
+		}
+
+		if (uploadButton && fileInput) {
+		    uploadButton.addEventListener("click", () => fileInput.click());
+		}
+
+		// 画像を指定の最大辺に収まるようリサイズし、JPEGで圧縮してdataURLを返す
+		function compressImage(file, maxSize = 1600, quality = 0.8) {
+		    return new Promise((resolve, reject) => {
+		        const img = new Image();
+		        const reader = new FileReader();
+
+		        reader.onload = (e) => {
+		            img.onload = () => {
+		                let { width, height } = img;
+
+		                if (width > maxSize || height > maxSize) {
+		                    if (width > height) {
+		                        height = Math.round(height * (maxSize / width));
+		                        width = maxSize;
+		                    } else {
+		                        width = Math.round(width * (maxSize / height));
+		                        height = maxSize;
+		                    }
+		                }
+
+		                const canvas = document.createElement("canvas");
+		                canvas.width = width;
+		                canvas.height = height;
+
+		                const ctx = canvas.getContext("2d");
+		                ctx.drawImage(img, 0, 0, width, height);
+
+		                resolve(canvas.toDataURL("image/jpeg", quality));
+		            };
+		            img.onerror = reject;
+		            img.src = e.target.result;
+		        };
+		        reader.onerror = reject;
+		        reader.readAsDataURL(file);
+		    });
+		}
+
+		// 画像選択時：圧縮してプレビュー表示＋sessionStorageに保存（唯一のchangeリスナー）
+		if (fileInput) {
+		    fileInput.addEventListener("change", async () => {
+		        if (fileInput.files.length > 0) {
+		            const file = fileInput.files[0];
+		            const compressedDataUrl = await compressImage(file, 1600, 0.8);
+
+		            image.src = compressedDataUrl;
+		            image.style.display = "block";
+		            if (noImage) noImage.style.display = "none";
+		            if (uploadIcon) uploadIcon.style.display = "none";
+		            if (uploadLabel) uploadLabel.textContent = "変更";
+
+		            sessionStorage.setItem("questImageData", compressedDataUrl);
+		            sessionStorage.setItem("questImageName", file.name.replace(/\.[^.]+$/, "") + ".jpg");
+		            sessionStorage.setItem("questImageType", "image/jpeg");
+		        }
+		    });
+		}
+
+		// クリアボタン：input・プレビュー・sessionStorageすべてリセット
+		if (clearButton) {
+		    clearButton.addEventListener("click", () => {
+		        fileInput.value = "";
+		        image.src = "";
+		        image.style.display = "none";
+		        if (noImage) noImage.style.display = "block";
+		        if (uploadIcon) uploadIcon.style.display = "inline-block";
+		        if (uploadLabel) uploadLabel.textContent = "新規";
+
+		        sessionStorage.removeItem("questImageData");
+		        sessionStorage.removeItem("questImageName");
+		        sessionStorage.removeItem("questImageType");
+		    });
+		}
+
+		// ページ読み込み時にsessionStorageから復元（消さない＝バリデーション失敗の再描画でも残る）
+		function restoreQuestImageFromStorage() {
+		    const dataUrl = sessionStorage.getItem("questImageData");
+		    if (!dataUrl) return;
+
+		    image.src = dataUrl;
+		    image.style.display = "block";
+		    if (noImage) noImage.style.display = "none";
+		    if (uploadIcon) uploadIcon.style.display = "none";
+		    if (uploadLabel) uploadLabel.textContent = "変更";
+
+		    fetch(dataUrl)
+		        .then(res => res.blob())
+		        .then(blob => {
+		            const fileName = sessionStorage.getItem("questImageName") || "upload.jpg";
+		            const fileType = sessionStorage.getItem("questImageType") || blob.type;
+		            const file = new File([blob], fileName, { type: fileType });
+
+		            const dt = new DataTransfer();
+		            dt.items.add(file);
+		            fileInput.files = dt.files;
+		        });
+		    // ここでは絶対にremoveItemしない
+		}
+
+		function changeAgeType(){
+		    const type = document.querySelector('input[name="ageType"]:checked').value;
+		    const warekiGroup = document.getElementById("warekiGroup");
+		    const ageGroup = document.getElementById("ageGroup");
+
+		    if(type === "wareki"){
+		        warekiGroup.style.display = "block";
+		        ageGroup.style.display = "none";
+		    }else{
+		        warekiGroup.style.display = "none";
+		        ageGroup.style.display = "block";
+		    }
+		}
+
+		// DOMContentLoadedはここで1回だけ、まとめて登録
+		window.addEventListener("DOMContentLoaded", () => {
+		    changeAgeType();
+		    restoreQuestImageFromStorage();
+		});
+	</script>
+</body>
+
+</html>

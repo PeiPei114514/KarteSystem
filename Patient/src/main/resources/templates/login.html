@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<title>ログイン画面</title>
+
+<link rel="stylesheet"
+         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<link rel="stylesheet" th:href="@{/style.css}">
+<meta charset="UTF-8">
+</head>
+
+<body>
+	
+
+	<header class="app-header">
+
+	    <div class="header-center">
+	        <div class="header-main">
+	            ログイン
+	        </div>
+	    </div>
+	
+
+	</header>
+
+<h1></h1>
+
+<!--<p th:text="${msg}"></p>-->
+<!--<form th:action="@{/login}" method="post">-->
+<!--<p>ユーザー名:<input type="text" name="username"></p>-->
+<!--<p>パスワード: <input type="password" name="password"></p>-->
+<!--<input type="submit" value="ログイン">-->
+<!--  <button type="submit" class="top-MenuButton">-->
+<!--        <i class="fa-solid fa-magnifying-glass"></i>-->
+<!--        <span>ログイン</span>-->
+<!--    </button>-->
+
+<!--</form>-->
+
+
+
+<div class="login-area">
+
+    <p th:text="${msg}" class="login-message"></p>
+
+    <form th:action="@{/login}" method="post">
+
+        <input type="text"
+               name="username"
+               placeholder="ユーザー名"
+               class="login-input">
+
+        <input type="password"
+               name="password"
+               placeholder="パスワード"
+               class="login-input">
+
+        <button type="submit" class="login-Button">
+            <span>ログイン</span>
+        </button>
+
+    </form>
+
+</div>
+
+
+<!--<p><a href="/user_regist.html">ユーザ登録</a></p>-->
+</body>
+</html>

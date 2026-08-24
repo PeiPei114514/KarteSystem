@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html xmlns="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>ユーザを検索</title>
+<link rel="stylesheet"
+         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="search-page">
+	
+	<header class="app-header">
+
+		<form action="/top_back">
+		<button type="submit" class="header-left">
+		     <i class="fa-solid fa-chevron-left"></i>
+		    </button>
+</form>
+	    <div class="header-center">
+	        <div class="header-main">
+	            患者検索
+	        </div>
+	    </div>
+		
+		<div id="header"></div>
+		<script src="/common/header-menu.js"></script>
+		
+		
+	</header>
+	
+
+<!--		<form action="/select_karte" method="post">-->
+<!--			<input type="text" name="namae">-->
+		
+<!--			<input type="submit" value="検索">-->			
+<!--		</form>-->
+	
+<div class="search-area">
+
+    <form action="/detail" method="get">
+        <input type="text"
+               id="namae"
+               name="namae"
+               class="search-box">
+    </form>
+<div  class="new-message">
+		※ 初期表示 ： 最新更新順</div>
+	
+    <div class="search-message">
+        氏名　　　　　　　　　　　　　　年齢　　　 　　性別
+    </div>
+	</div>
+	
+	
+		<div class="patient-list"　 id="patientList">
+			
+
+			    <a th:each="patient : ${patientList}"
+			       th:href="@{/detail/{id}(id=${patient.id},from='search')}"
+				   th:class="${patient.sex == 'M'}
+				                  ? 'patient-card male'
+				                  : 'patient-card female'">
+			        <div class="name" th:text="${patient.namae}"></div>
+			        <div th:if="${patient.age!=null}"
+					 class="age" th:text="'(' + ${patient.age} + ')'"></div>
+					<div th:if="${patient.sex!=null}"
+					class="gender"
+					     th:text="${patient.sex == 'M'} ? '男' : '女'"></div>
+						 <div class="updated"
+						            th:text="${#temporals.format(patient.updateDate,'yyyy/MM/dd')} + ' 更新'"></div>
+			    
+			    </a>
+			</div>
+			
+			<button id="moreButton">もっと見る</button>
+			<div th:text="${search}"></div>
+<!--			<a th:if="${hasNext}"-->
+<!--			   th:href="@{/detail(page=${page + 1})}">-->
+<!--			    もっと見る-->
+<!--			</a>-->
+
+<!--		<table border="1">-->
+<!--			<tr>-->
+<!--				<th>ID</th>-->
+<!--				<th>名前</th>-->
+<!--				<th>生年月日</th>-->
+<!--				<th>性別</th>-->
+				
+				
+<!--			</tr>-->
+<!--			<tr th:each="patient:${patientList}" th:object="${patient}">-->
+<!--			<td><span th:text="${karte.id}"></span><input type="hidden" th:field="${karte.id}"></td>-->
+<!--			<td th:text="${karte.id}"><a href=""></td>-->
+<!--				<td>-->
+<!--				    <a th:href="@{/detail/{id}(id=*{id})}"-->
+<!--				       th:text="*{id}">-->
+<!--				    </a>-->
+<!--				</td>-->
+<!--				<td th:text="*{namae}"></td>-->
+<!--				<td th:text="*{birth}"></td>-->
+<!--				<div th:switch="*{sex}">-->
+<!--					<td th:case="M" th:text="男"></td>-->
+<!--					<td th:case="F" th:text="女"></td>-->
+<!--				</div>-->
+				
+				
+<!--			</tr>-->
+<!--		</table>-->
+		<script th:src="@{/search.js}"></script>
+		<script>
+
+		window.offset = 20;
+		const limit = 20;
+
+		document.getElementById("moreButton").addEventListener("click", loadMore);
+
+		function loadMore() {
+
+		    fetch(`/patient/list?offset=${offset}&limit=${limit}`)
+		        .then(response => response.json())
+		        .then(list => {
+
+		            const patientList = document.getElementById("patientList");
+
+		            list.forEach(patient => {
+
+		                const card = document.createElement("a");
+
+		                card.href = "/detail/" + patient.id;
+		                card.className =
+		                    patient.sex === "M"
+		                    ? "patient-card male"
+		                    : "patient-card female";
+
+		                card.innerHTML = `
+		                    <div class="name">${patient.namae}</div>
+		                    <div class="age">(${patient.age})</div>
+		                    <div class="gender">${patient.sex === "M" ? "男" : "女"}</div>
+		                    <div class="updated">${patient.updateDate.substring(0,10).replaceAll("-","/")} 更新</div>
+		                `;
+
+		                patientList.appendChild(card);
+
+		            });
+
+		            offset += list.length;
+
+		            //取得件数が20件未満なら最後なのでボタンを消す
+		            if (list.length < limit) {
+		                document.getElementById("moreButton").style.display = "none";
+		            }
+
+		        });
+
+		}
+
+		</script>
+</body>
+</html>

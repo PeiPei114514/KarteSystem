@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>問診票詳細</title>
+<link rel="stylesheet"
+         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+	
+	<div th:replace="~{fragments/all_detail :: imageDetail(
+	    record=${quest},
+	    deleteUrl='/delete_quest',
+	    updateUrl='/update_upload_quest',
+	    uploadUrl='/update_upload_quest',
+	    title='問診票詳細'
+	)}"></div>
+	<script th:src="@{/js/menu.js}"></script>
+	<script>
+		function openDeleteDialog() {
+		    document.getElementById("deleteDialog").style.display = "flex";
+		}
+
+		function closeDeleteDialog() {
+		    document.getElementById("deleteDialog").style.display = "none";
+		}
+
+		
+		function downloadImage() {
+
+			    const img = document.getElementById("detailImage");
+
+			    const link = document.createElement("a");
+			    link.href = img.src;
+
+			    const fileName = img.src.split("/").pop();
+			    link.download = fileName;
+
+			    document.body.appendChild(link);
+			    link.click();
+			    document.body.removeChild(link);
+			}
+
+	</script>
+	
+</body>
+</html>
