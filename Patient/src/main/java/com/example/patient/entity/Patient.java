@@ -67,5 +67,12 @@ public Integer getAge() {
 	}
 }
 
+//年齢を繰り上げるためのメソッド
+public void incrementAge() {
+    if (age != null) {
+        age++;
+    }
+}
+
 
 }

@@ -57,6 +57,8 @@ public class KarteController {
 	@Autowired
 	private ImgFileValidation imgFileValidation;
 	
+	private final String filePath = "Z:/upload/"; //カルテや問診票を保存するためのフォルダパス
+	
 	
 	//トップに戻るボタンを押されたときの処理
 	@GetMapping("/top_back")
@@ -342,9 +344,14 @@ public class KarteController {
 	   //削除する患者に対応するカルテ画像を削除する
 	   for(Karte karte :patient.getKarteList()) {
 		   if(karte.getImgFilePath()!=null) { //画像ファイルが存在する場合のみ(JSONはスルー)
-			       Path path = Paths.get("F:/upload/"+karte.getImgFilePath());
+			       Path path = Paths.get(filePath+karte.getImgFilePath());
 		    Files.deleteIfExists(path);
 		   }	
+	   }
+	   //問診票を削除
+	   for(Quest quest :patient.getQuestList()) {
+			Path path = Paths.get(filePath+quest.getImgFilePath());
+		    Files.deleteIfExists(path);		   	
 	   }
 	   //データベースのレコードを削除
 	   patientRepository.delete(patient);
@@ -437,7 +444,7 @@ public class KarteController {
 	public String deleteKarte(@RequestParam int id) throws IOException{
 		Karte karte = karteRepository.findById(id).orElseThrow();
 		int patientId =karte.getPatient().getId();
-	    Path path = Paths.get("Z:/upload/"+karte.getImgFilePath());
+	    Path path = Paths.get(filePath+karte.getImgFilePath());
 	    Files.deleteIfExists(path);
 	    patientRepository.updateDate(patientId);
 		karteRepository.delete(karte);
@@ -449,7 +456,7 @@ public class KarteController {
 	public String deleteQuest(@RequestParam int id) throws IOException{
 		Quest quest = questRepository.findById(id).orElseThrow();
 		int patientId =quest.getPatient().getId();
-	    Path path = Paths.get("Z:/upload/"+quest.getImgFilePath());
+	    Path path = Paths.get(filePath+quest.getImgFilePath());
 	    Files.deleteIfExists(path);
 	    patientRepository.updateDate(patientId);
 		questRepository.delete(quest);
@@ -504,7 +511,7 @@ public class KarteController {
 		 Karte karte =karteRepository.findById(karteId).orElseThrow();
 		 patientRepository.updateDate(karte.getPatient().getId());
 		 //古い画像をフォルダから削除する
-	    Path path = Paths.get("F:/upload/"+karte.getImgFilePath());
+	    Path path = Paths.get(filePath+karte.getImgFilePath());
 	    Files.deleteIfExists(path);
 	    //例外チェックとファイル名を取得
 		String fileName= imgFileValidation.validation(file);
@@ -528,7 +535,7 @@ public class KarteController {
 //		 patient.setId(patient.getId());
 //		 patientRepository.saveAndFlush(patient);
 		 //古い画像をフォルダから削除する
-	    Path path = Paths.get("F:/upload/"+quest.getImgFilePath());
+	    Path path = Paths.get(filePath+quest.getImgFilePath());
 	    Files.deleteIfExists(path);
 	    //例外チェックとファイル名を取得
 		String fileName= imgFileValidation.validation(file);
@@ -545,7 +552,7 @@ public class KarteController {
 	    @Override
 	    public void addResourceHandlers(ResourceHandlerRegistry registry) {
 	        registry.addResourceHandler("/images/**")
-	                .addResourceLocations("file:Z:/upload/"); //ここでパスを翻訳している
+	                .addResourceLocations("file:"+filePath); //ここでパスを翻訳している
 	    }
 	}
 	
